@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(chmod:*)",
+      "Bash(/home/swistak35/projs/swistak35/claude-kargos/claude-status.5s.rb)",
+      "Bash(/home/swistak35/projs/swistak35/claude-kargos/test-hooks.sh)",
+      "Bash(./test-hooks.sh:*)",
+      "Bash(unset CLAUDE_SESSION_ID)",
+      "Bash(./hooks/session-state-helper.rb:*)"
+    ]
+  }
+}
