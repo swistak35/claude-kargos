@@ -1,6 +1,7 @@
 #!/usr/bin/env ruby
 
 require 'json'
+require 'set'
 
 # Claude Session Status Monitor for Kargos
 # Refresh interval: 5 seconds (indicated by .5s. in filename)
@@ -19,14 +20,25 @@ COLOR_IDLE = "#808080"     # Gray
 # Directory where session state files are stored
 SESSIONS_DIR = File.expand_path('~/.claude-sessions')
 
-# Read all session files and return status
+# Get set of all running PIDs
+def running_pids
+  Dir.glob('/proc/[0-9]*').map { |p| File.basename(p).to_i }.to_set
+end
+
+# Read all session files, removing stale sessions whose PID is no longer running
 def get_sessions
   return [] unless Dir.exist?(SESSIONS_DIR)
 
+  pids = running_pids
   sessions = []
   Dir.glob(File.join(SESSIONS_DIR, '*.json')).each do |file|
     begin
       data = JSON.parse(File.read(file))
+      pid = data['pid']
+      if pid && !pids.include?(pid)
+        File.delete(file)
+        next
+      end
       sessions << data
     rescue => e
       # Skip invalid files
@@ -46,6 +58,18 @@ def state_icon(state)
   end
 end
 
+def session_name(session)
+  codename = session.dig("metadata", "codename")
+  return codename if codename && !codename.empty?
+
+  project = session.dig("metadata", "project") || session["pwd"] || "Unknown"
+  File.basename(project)
+end
+
+def state_bar_info(session)
+  "#{session_name(session)}#{state_icon(session["state"])}"
+end
+
 # Main display logic
 sessions = get_sessions
 
@@ -56,7 +80,7 @@ if sessions.empty?
   puts "No active sessions"
 else
   # Display one icon per session (in natural order)
-  icons = sessions.map { |s| state_icon(s["state"]) }.join(" ")
+  icons = sessions.map { |s| state_bar_info(s) }.join(" ")
 
   # Color based on most urgent state
   color = if sessions.any? { |s| s["state"] == "waiting" }

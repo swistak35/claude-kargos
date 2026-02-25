@@ -139,6 +139,7 @@ The `cat` command pipes STDIN to the helper script, which parses the JSON and ex
 ```json
 {
   "session_id": "abc123",
+  "pid": 12345,
   "state": "working|ready|waiting",
   "timestamp": 1234567890,
   "pwd": "/path/to/project",
@@ -167,7 +168,7 @@ The metadata object contains event-specific fields captured from the hook input 
 ## Important Notes
 
 - Session files persist across Claude Code restarts until SessionEnd hook fires
-- If Claude Code crashes, session files may become stale (manual cleanup required)
+- If Claude Code crashes, the kargos script automatically detects stale sessions by checking if the stored PID is still running, and removes the session file
 - Kargos script gracefully handles missing/malformed session files (rescue block in claude-status.5s.rb:28-33)
 - Each hook must exit 0 to avoid breaking Claude Code workflow
 - The helper script uses `File.write` with `JSON.pretty_generate` for atomic file updates

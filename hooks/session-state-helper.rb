@@ -7,6 +7,20 @@ require 'fileutils'
 # Directory to store session state files
 SESSIONS_DIR = File.expand_path('~/.claude-sessions')
 
+# Walk up the process tree to find the ancestor "claude" process PID
+def find_claude_pid
+  pid = Process.ppid
+  loop do
+    break if pid <= 1
+    comm = File.read("/proc/#{pid}/comm").strip rescue nil
+    return pid if comm == 'claude'
+    ppid = File.read("/proc/#{pid}/status").match(/^PPid:\s*(\d+)/)&.[](1)&.to_i rescue nil
+    break if ppid.nil? || ppid <= 1
+    pid = ppid
+  end
+  nil
+end
+
 # Ensure the sessions directory exists
 FileUtils.mkdir_p(SESSIONS_DIR)
 
@@ -42,11 +56,13 @@ def update_session_state(hook_data, state, extra_metadata = {})
     cwd: hook_data['cwd'],
     transcript_path: hook_data['transcript_path'],
     permission_mode: hook_data['permission_mode'],
-    project_dir: ENV['CLAUDE_PROJECT_DIR']
+    project_dir: ENV['CLAUDE_PROJECT_DIR'],
+    codename: ENV['CLAUDE_KARGOS_CODENAME']
   }.merge(extra_metadata)
 
   data = {
     session_id: session_id,
+    pid: find_claude_pid,
     state: state,
     timestamp: Time.now.to_i,
     pwd: hook_data['cwd'] || ENV['PWD'] || Dir.pwd,
